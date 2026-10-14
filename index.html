@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="nl" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#070a12" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Leefstijl" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Gewoonten, Slaap & Leefstijl PWA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            oled: '#070a12',
+            card: '#111624',
+            cardBorder: '#1e273d',
+            accent: '#6366f1'
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root {
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+    }
+    body {
+      background-color: #070a12;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      padding-top: max(12px, var(--sat));
+      padding-bottom: calc(88px + var(--sab));
+      overflow-x: hidden;
+    }
+    .bottom-nav {
+      padding-bottom: max(10px, var(--sab));
+    }
+    input[type="range"] {
+      accent-color: #6366f1;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="min-h-screen select-none">
+
+  <!-- TOP HEADER -->
+  <header class="max-w-5xl mx-auto px-4 pt-2 pb-3 flex items-center justify-between border-b border-cardBorder/80 sticky top-0 z-30 bg-oled/90 backdrop-blur-md">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-xl shadow-inner">
+        🌙
+      </div>
+      <div>
+        <h1 class="text-base font-bold tracking-tight text-white leading-tight">Leefstijl & Slaap</h1>
+        <p id="headerDateLabel" class="text-xs text-slate-400">Vandaag</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-1.5">
+      <button onclick="shiftWeek(-1)" class="w-9 h-9 rounded-xl bg-card border border-cardBorder flex items-center justify-center text-slate-300 active:scale-95">◀</button>
+      <button onclick="goToday()" class="px-2.5 h-9 rounded-xl bg-card border border-cardBorder text-xs font-medium text-indigo-400 active:scale-95">Vandaag</button>
+      <button onclick="shiftWeek(1)" class="w-9 h-9 rounded-xl bg-card border border-cardBorder flex items-center justify-center text-slate-300 active:scale-95">▶</button>
+      <button onclick="openHabitModal()" class="ml-1 px-3 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow-lg shadow-indigo-600/30 active:scale-95">+ Doel</button>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 pt-4 space-y-5">
+
+    <!-- 7-DAAGSE DAG SELECTOR (Pixel 10 Pro Breedte Geoptimaliseerd) -->
+    <section>
+      <div class="flex items-center justify-between mb-2">
+        <span id="weekRangeText" class="text-xs font-medium text-slate-400 uppercase tracking-wider">Weekoverzicht</span>
+        <span id="dayCompletionPill" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">0% voltooid</span>
+      </div>
+      <div id="weekSelectorGrid" class="grid grid-cols-7 gap-1.5"></div>
+    </section>
+
+    <!-- SNELLE KPI BALK -->
+    <section class="grid grid-cols-4 gap-2">
+      <div class="bg-card border border-cardBorder rounded-2xl p-2.5 text-center">
+        <div class="text-[11px] text-slate-400">Vandaag</div>
+        <div id="kpiToday" class="text-base font-bold text-white mt-0.5">0/0</div>
+      </div>
+      <div class="bg-card border border-cardBorder rounded-2xl p-2.5 text-center">
+        <div class="text-[11px] text-slate-400">Slaap</div>
+        <div id="kpiSleep" class="text-base font-bold text-indigo-400 mt-0.5">0.0u</div>
+      </div>
+      <div class="bg-card border border-cardBorder rounded-2xl p-2.5 text-center">
+        <div class="text-[11px] text-slate-400">Water</div>
+        <div id="kpiWater" class="text-base font-bold text-sky-400 mt-0.5">0/8</div>
+      </div>
+      <div class="bg-card border border-cardBorder rounded-2xl p-2.5 text-center">
+        <div class="text-[11px] text-slate-400">Top Streak</div>
+        <div id="kpiStreak" class="text-base font-bold text-amber-400 mt-0.5">0d 🔥</div>
+      </div>
+    </section>
+
+    <!-- TAB 1: VANDAAG (GEWOONTEN & TOP 3 FOCUS) -->
+    <div id="tab-today" class="space-y-5">
+      <!-- Dagdeel Filter -->
+      <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+        <button onclick="setRoutineFilter('all')" id="filter-all" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white">Alles</button>
+        <button onclick="setRoutineFilter('Ochtend')" id="filter-Ochtend" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-card border border-cardBorder text-slate-300">☀️ Ochtend</button>
+        <button onclick="setRoutineFilter('Overdag')" id="filter-Overdag" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-card border border-cardBorder text-slate-300">⚡ Overdag</button>
+        <button onclick="setRoutineFilter('Avond')" id="filter-Avond" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-card border border-cardBorder text-slate-300">🌙 Avond</button>
+      </div>
+
+      <!-- Gewoonte Kaarten Lijst -->
+      <div id="habitsContainer" class="space-y-2.5"></div>
+
+      <!-- Top 3 Dagfocus & Reflectie -->
+      <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">🎯 Top 3 Focus voor deze dag</h2>
+          <span class="text-[11px] text-slate-400">Automatisch opgeslagen</span>
+        </div>
+        <div id="prioritiesContainer" class="space-y-2"></div>
+        <div class="pt-2">
+          <label class="text-xs font-medium text-slate-400 block mb-1">📝 Korte dagreflectie / notitie</label>
+          <textarea id="dayNoteInput" rows="2" oninput="saveDayNote(this.value)" placeholder="Waarom ging het vandaag goed of minder? Bijv. laat op, goede energie..." class="w-full rounded-xl bg-oled border border-cardBorder px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: SLAAP, ENERGIE, WATER & KOFFIE -->
+    <div id="tab-sleep" class="space-y-4 hidden">
+      <!-- Slaap & Herstel -->
+      <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-white">🛌 Slaap & Herstel</h2>
+            <p class="text-xs text-slate-400">Log je uren en hoe uitgerust je wakker werd</p>
+          </div>
+          <div class="text-right">
+            <span id="sleepHoursBadge" class="text-xl font-extrabold text-indigo-400">7.5u</span>
+            <span class="block text-[10px] text-slate-400">Doel: 8.0u</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button onclick="adjustSleep(-0.5)" class="w-11 h-11 rounded-xl bg-oled border border-cardBorder text-lg font-bold text-slate-200 active:scale-95">-</button>
+          <input id="sleepRange" type="range" min="0" max="12" step="0.5" oninput="setSleepHours(this.value)" class="flex-1 h-2 bg-oled rounded-lg cursor-pointer" />
+          <button onclick="adjustSleep(0.5)" class="w-11 h-11 rounded-xl bg-oled border border-cardBorder text-lg font-bold text-slate-200 active:scale-95">+</button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-1">
+          <div>
+            <label class="text-[11px] text-slate-400 block mb-1">Bedtijd</label>
+            <input id="bedTimeInput" type="time" onchange="saveSleepTimes()" class="w-full rounded-xl bg-oled border border-cardBorder px-3 py-2 text-xs text-white" />
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-400 block mb-1">Wekkertijd</label>
+            <input id="wakeTimeInput" type="time" onchange="saveSleepTimes()" class="w-full rounded-xl bg-oled border border-cardBorder px-3 py-2 text-xs text-white" />
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400 block mb-1.5">Slaapkwaliteit (1 - 5 sterren)</label>
+          <div id="sleepStarsRow" class="grid grid-cols-5 gap-2"></div>
+        </div>
+      </div>
+
+      <!-- Energie & Stemming -->
+      <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-4">
+        <div>
+          <h2 class="text-sm font-bold text-white mb-2">🔋 Energie-batterij</h2>
+          <div id="energyRow" class="grid grid-cols-5 gap-2"></div>
+        </div>
+        <div>
+          <h2 class="text-sm font-bold text-white mb-2">😊 Stemming vandaag</h2>
+          <div id="moodRow" class="grid grid-cols-5 gap-2"></div>
+        </div>
+      </div>
+
+      <!-- Water & Cafeïne Tellers -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-white">💧 Hydratatie (Glazen)</h3>
+            <span id="waterCounterText" class="text-sm font-bold text-sky-400">0 / 8</span>
+          </div>
+          <div class="w-full h-2.5 bg-oled rounded-full overflow-hidden">
+            <div id="waterProgressBar" class="h-full bg-sky-500 transition-all duration-300" style="width: 0%"></div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="adjustCounter('water', -1)" class="flex-1 py-2.5 rounded-xl bg-oled border border-cardBorder font-bold text-slate-300 active:scale-95">- 1 glas</button>
+            <button onclick="adjustCounter('water', 1)" class="flex-1 py-2.5 rounded-xl bg-sky-600 font-bold text-white active:scale-95">+ 1 glas</button>
+          </div>
+        </div>
+
+        <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-white">☕ Cafeïne / Koffie</h3>
+            <span id="coffeeCounterText" class="text-sm font-bold text-amber-400">0 koppen</span>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="adjustCounter('coffee', -1)" class="flex-1 py-2.5 rounded-xl bg-oled border border-cardBorder font-bold text-slate-300 active:scale-95">- 1 kop</button>
+            <button onclick="adjustCounter('coffee', 1)" class="flex-1 py-2.5 rounded-xl bg-amber-600 font-bold text-white active:scale-95">+ 1 kop</button>
+          </div>
+          <label class="flex items-center gap-2.5 pt-1 cursor-pointer">
+            <input id="noLateCoffeeCheck" type="checkbox" onchange="toggleNoLateCoffee(this.checked)" class="w-4 h-4 rounded accent-emerald-500" />
+            <span class="text-xs text-slate-300">Geen cafeïne na 14:00 uur (beter slapen)</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: INZICHTEN & STREAK DIAGRAMMEN -->
+    <div id="tab-insights" class="space-y-4 hidden">
+      <!-- Wekelijks Activiteitendiagram -->
+      <div class="bg-card border border-cardBorder rounded-2xl p-4">
+        <h2 class="text-sm font-bold text-white mb-1">📊 Wekelijkse Gewoonte-voortgang</h2>
+        <p class="text-xs text-slate-400 mb-4">Percentage afgevinkte doelen per dag</p>
+        <div id="weeklyHabitBars" class="grid grid-cols-7 gap-2 items-end h-36 pt-4 px-1"></div>
+      </div>
+
+      <!-- Wekelijks Slaap & Energie Diagram -->
+      <div class="bg-card border border-cardBorder rounded-2xl p-4">
+        <h2 class="text-sm font-bold text-white mb-1">🌙 Wekelijks Slaap & Energie Diagram</h2>
+        <p class="text-xs text-slate-400 mb-4">Slaapuren (balk) t.o.v. je energie-score (⚡)</p>
+        <div id="weeklySleepBars" class="grid grid-cols-7 gap-2 items-end h-36 pt-4 px-1"></div>
+      </div>
+
+      <!-- Streak Ranglijst -->
+      <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-3">
+        <h2 class="text-sm font-bold text-white">🔥 Actieve Streaks per Gewoonte</h2>
+        <div id="streakRankingList" class="space-y-2.5"></div>
+      </div>
+    </div>
+
+    <!-- TAB 4: APP & BACK-UP DATA -->
+    <div id="tab-settings" class="space-y-4 hidden">
+      <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-3">
+        <h2 class="text-sm font-bold text-white">📱 Installeren op je Google Pixel 10 Pro</h2>
+        <ol class="text-xs text-slate-300 space-y-2 list-decimal list-inside">
+          <li>Open je live <code class="text-indigo-400">github.io</code> link in <strong>Chrome</strong> op je Pixel.</li>
+          <li>Tik rechtsboven op de <strong>drie puntjes (⋮)</strong>.</li>
+          <li>Kies <strong>Toevoegen aan startscherm</strong> -> <strong>App installeren</strong>.</li>
+          <li>Open de app vanaf je startscherm: hij draait nu op volledig scherm (zonder adresbalk) en slaat alles lokaal op je toestel op.</li>
+        </ol>
+      </div>
+
+      <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-3">
+        <h2 class="text-sm font-bold text-white">💾 Back-up maken & Herstellen</h2>
+        <p class="text-xs text-slate-400">Download je gegevens als JSON-bestand om ze veilig te bewaren of over te zetten naar een ander apparaat.</p>
+        <div class="flex flex-wrap gap-2 pt-1">
+          <button onclick="exportData()" class="px-4 py-2.5 rounded-xl bg-indigo-600 text-xs font-semibold text-white active:scale-95">⬇️ Exporteer Back-up (.json)</button>
+          <label class="px-4 py-2.5 rounded-xl bg-oled border border-cardBorder text-xs font-semibold text-slate-200 cursor-pointer active:scale-95">
+            ⬆️ Importeer Back-up
+            <input type="file" accept=".json" onchange="importData(event)" class="hidden" />
+          </label>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL: NIEUWE GEWOONTE TOEVOEGEN -->
+  <div id="habitModal" class="fixed inset-0 bg-black/75 z-50 hidden items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-card border-t sm:border border-cardBorder w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white">Nieuwe Gewoonte Toevoegen</h3>
+        <button onclick="closeHabitModal()" class="text-slate-400 text-lg px-2">✕</button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Naam van gewoonte</label>
+          <input id="newHabitName" type="text" placeholder="Bijv. 30 min wandelen, Vitamines..." class="w-full rounded-xl bg-oled border border-cardBorder px-3 py-2.5 text-sm text-white" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Emoji / Icoon</label>
+            <input id="newHabitIcon" type="text" value="✅" class="w-full rounded-xl bg-oled border border-cardBorder px-3 py-2.5 text-sm text-white" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Dagdeel</label>
+            <select id="newHabitRoutine" class="w-full rounded-xl bg-oled border border-cardBorder px-3 py-2.5 text-sm text-white">
+              <option value="Ochtend">☀️ Ochtend</option>
+              <option value="Overdag">⚡ Overdag</option>
+              <option value="Avond">🌙 Avond</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeHabitModal()" class="flex-1 py-2.5 rounded-xl bg-oled border border-cardBorder text-xs font-semibold text-slate-300">Annuleren</button>
+        <button onclick="saveNewHabit()" class="flex-1 py-2.5 rounded-xl bg-indigo-600 text-xs font-semibold text-white">Opslaan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONDERSTE NAVIGATIEBALK (4 TABS VOOR PIXEL 10 PRO) -->
+  <nav class="bottom-nav fixed bottom-0 inset-x-0 bg-oled/95 backdrop-blur-lg border-t border-cardBorder z-40">
+    <div class="max-w-md mx-auto grid grid-cols-4 px-2 pt-1.5">
+      <button onclick="switchTab('today')" id="nav-today" class="flex flex-col items-center py-1.5 text-indigo-400">
+        <span class="text-lg">☑️</span>
+        <span class="text-[11px] font-semibold mt-0.5">Vandaag</span>
+      </button>
+      <button onclick="switchTab('sleep')" id="nav-sleep" class="flex flex-col items-center py-1.5 text-slate-400">
+        <span class="text-lg">🌙</span>
+        <span class="text-[11px] font-semibold mt-0.5">Slaap & Energie</span>
+      </button>
+      <button onclick="switchTab('insights')" id="nav-insights" class="flex flex-col items-center py-1.5 text-slate-400">
+        <span class="text-lg">📊</span>
+        <span class="text-[11px] font-semibold mt-0.5">Inzichten</span>
+      </button>
+      <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center py-1.5 text-slate-400">
+        <span class="text-lg">⚙️</span>
+        <span class="text-[11px] font-semibold mt-0.5">App & Data</span>
+      </button>
+    </div>
+  </nav>
+
+  <script>
+    // DYNAMISCH PWA MANIFEST GENEREREN
+    (function setupPWA() {
+      const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="120" fill="#111624"/><circle cx="256" cy="256" r="170" fill="#6366f1" opacity="0.2"/><path d="M215 275l-45-45-25 25 70 70 155-155-25-25z" fill="#818cf8"/></svg>`;
+      const iconUrl = "data:image/svg+xml;base64," + btoa(svgIcon);
+      const manifest = {
+        name: "Gewoonten, Slaap & Leefstijl",
+        short_name: "Leefstijl",
+        start_url: ".",
+        display: "standalone",
+        background_color: "#070a12",
+        theme_color: "#070a12",
+        icons: [{ src: iconUrl, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }]
+      };
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifest));
+      document.head.appendChild(link);
+    })();
+
+    const STORAGE_KEY = 'pixel_leefstijl_pwa_v1';
+    const DAY_LABELS = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
+    const MOODS = ['😫', '😕', '😐', '🙂', '🤩'];
+
+    function formatDateKey(date) {
+      const d = new Date(date);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function getMonday(date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      d.setDate(diff);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    let state = {
+      selectedDate: formatDateKey(new Date()),
+      weekOffset: 0,
+      routineFilter: 'all',
+      habits: [
+        { id: 'h1', name: 'Groot glas water bij opstaan', icon: '💧', routine: 'Ochtend' },
+        { id: 'h2', name: 'Vitamines & supplementen', icon: '💊', routine: 'Ochtend' },
+        { id: 'h3', name: '30 min beweging / sport', icon: '🏃', routine: 'Overdag' },
+        { id: 'h4', name: 'Focusblok zonder afleiding', icon: '🎯', routine: 'Overdag' },
+        { id: 'h5', name: 'Geen schermen na 22:30 uur', icon: '📵', routine: 'Avond' },
+        { id: 'h6', name: 'Op tijd naar bed (8u slaapdoel)', icon: '🛌', routine: 'Avond' }
+      ],
+      logs: {},
+      dailyData: {}
+    };
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          state = { ...state, ...parsed, selectedDate: formatDateKey(new Date()), weekOffset: 0 };
+        }
+      } catch (e) {}
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        habits: state.habits,
+        logs: state.logs,
+        dailyData: state.dailyData
+      }));
+    }
+
+    function getDayObj(dateKey) {
+      if (!state.dailyData[dateKey]) {
+        state.dailyData[dateKey] = {
+          sleepHours: 7.5,
+          sleepQuality: 4,
+          bedTime: '23:00',
+          wakeTime: '06:30',
+          energy: 3,
+          mood: 3,
+          water: 0,
+          coffee: 0,
+          noLateCoffee: false,
+          priorities: [
+            { text: '', done: false },
+            { text: '', done: false },
+            { text: '', done: false }
+          ],
+          note: ''
+        };
+      }
+      return state.dailyData[dateKey];
+    }
+
+    function getWeekDates() {
+      const base = new Date();
+      base.setDate(base.getDate() + state.weekOffset * 7);
+      const monday = getMonday(base);
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        return d;
+      });
+    }
+
+    function getStreak(habitId) {
+      let streak = 0;
+      const d = new Date();
+      for (let i = 0; i < 365; i++) {
+        const key = formatDateKey(d);
+        if (state.logs[key] && state.logs[key][habitId]) {
+          streak++;
+        } else if (i > 0) {
+          break;
+        }
+        d.setDate(d.getDate() - 1);
+      }
+      return streak;
+    }
+
+    function renderAll() {
+      const weekDates = getWeekDates();
+      const selDateObj = new Date(state.selectedDate + 'T00:00:00');
+      document.getElementById('headerDateLabel').textContent = selDateObj.toLocaleDateString('nl-NL', {
+        weekday: 'long', day: 'numeric', month: 'short'
+      });
+
+      const first = weekDates[0].toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+      const last = weekDates[6].toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+      document.getElementById('weekRangeText').textContent = `${first} - ${last}`;
+
+      const grid = document.getElementById('weekSelectorGrid');
+      grid.innerHTML = '';
+      weekDates.forEach((d, idx) => {
+        const key = formatDateKey(d);
+        const isSelected = key === state.selectedDate;
+        const isToday = key === formatDateKey(new Date());
+        const dayLog = state.logs[key] || {};
+        const doneCount = state.habits.filter(h => dayLog[h.id]).length;
+        const pct = state.habits.length ? Math.round((doneCount / state.habits.length) * 100) : 0;
+
+        const btn = document.createElement('button');
+        btn.onclick = () => { state.selectedDate = key; renderAll(); };
+        btn.className = `flex flex-col items-center py-2 rounded-2xl border transition-all ${
+          isSelected
+            ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/30'
+            : 'bg-card border-cardBorder text-slate-300'
+        }`;
+        btn.innerHTML = `
+          <span class="text-[10px] uppercase opacity-75">${DAY_LABELS[idx]}</span>
+          <span class="text-sm font-bold mt-0.5">${d.getDate()}</span>
+          <div class="w-6 h-1 rounded-full mt-1.5 ${isSelected ? 'bg-white/30' : 'bg-oled'} overflow-hidden">
+            <div class="h-full ${isSelected ? 'bg-white' : 'bg-indigo-500'}" style="width:${pct}%"></div>
+          </div>
+          ${isToday ? '<span class="w-1 h-1 rounded-full bg-emerald-400 mt-1"></span>' : '<span class="w-1 h-1 mt-1"></span>'}
+        `;
+        grid.appendChild(btn);
+      });
+
+      const curLog = state.logs[state.selectedDate] || {};
+      const curDone = state.habits.filter(h => curLog[h.id]).length;
+      const curPct = state.habits.length ? Math.round((curDone / state.habits.length) * 100) : 0;
+      const dayInfo = getDayObj(state.selectedDate);
+
+      document.getElementById('dayCompletionPill').textContent = `${curPct}% voltooid`;
+      document.getElementById('kpiToday').textContent = `${curDone}/${state.habits.length}`;
+      document.getElementById('kpiSleep').textContent = `${Number(dayInfo.sleepHours).toFixed(1)}u`;
+      document.getElementById('kpiWater').textContent = `${dayInfo.water}/8`;
+
+      const maxStreak = state.habits.reduce((max, h) => Math.max(max, getStreak(h.id)), 0);
+      document.getElementById('kpiStreak').textContent = `${maxStreak}d 🔥`;
+
+      renderHabits(weekDates);
+      renderPrioritiesAndNote(dayInfo);
+      renderSleepAndEnergy(dayInfo);
+      renderInsights(weekDates);
+    }
+
+    function renderHabits(weekDates) {
+      const container = document.getElementById('habitsContainer');
+      container.innerHTML = '';
+      const filtered = state.habits.filter(h => state.routineFilter === 'all' || h.routine === state.routineFilter);
+
+      filtered.forEach(habit => {
+        const isDoneToday = !!(state.logs[state.selectedDate] && state.logs[state.selectedDate][habit.id]);
+        const streak = getStreak(habit.id);
+
+        const card = document.createElement('div');
+        card.className = 'bg-card border border-cardBorder rounded-2xl p-3.5 space-y-3';
+
+        let miniDaysHtml = '';
+        weekDates.forEach((d, i) => {
+          const k = formatDateKey(d);
+          const checked = !!(state.logs[k] && state.logs[k][habit.id]);
+          miniDaysHtml += `
+            <button onclick="toggleHabit('${habit.id}', '${k}')" class="h-8 rounded-xl text-[11px] font-bold border transition-all ${
+              checked
+                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                : 'bg-oled border-cardBorder text-slate-500'
+            }">${DAY_LABELS[i][0]}</button>
+          `;
+        });
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-3">
+            <button onclick="toggleHabit('${habit.id}', '${state.selectedDate}')" class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl border transition-all shrink-0 active:scale-90 ${
+              isDoneToday
+                ? 'bg-emerald-500 border-emerald-400 text-slate-950 font-bold shadow-lg shadow-emerald-500/25'
+                : 'bg-oled border-cardBorder text-white'
+            }">
+              ${isDoneToday ? '✓' : habit.icon}
+            </button>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-oled border border-cardBorder text-slate-400">${habit.routine}</span>
+                <span class="text-[11px] font-semibold text-amber-400">🔥 ${streak}d</span>
+              </div>
+              <h3 class="text-sm font-bold text-white truncate mt-0.5 ${isDoneToday ? 'line-through opacity-60' : ''}">${habit.name}</h3>
+            </div>
+            <button onclick="deleteHabit('${habit.id}')" class="text-slate-500 hover:text-rose-400 text-xs px-2 py-1">🗑️</button>
+          </div>
+          <div class="grid grid-cols-7 gap-1.5 pt-1 border-t border-cardBorder/60">
+            ${miniDaysHtml}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderPrioritiesAndNote(dayInfo) {
+      const box = document.getElementById('prioritiesContainer');
+      box.innerHTML = '';
+      dayInfo.priorities.forEach((p, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-2';
+        row.innerHTML = `
+          <button onclick="togglePriority(${idx})" class="w-8 h-8 rounded-xl border flex items-center justify-center text-xs font-bold shrink-0 ${
+            p.done ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-oled border-cardBorder text-slate-400'
+          }">${p.done ? '✓' : idx + 1}</button>
+          <input type="text" value="${p.text.replace(/"/g, '&quot;')}" oninput="updatePriorityText(${idx}, this.value)" placeholder="Belangrijke taak #${idx + 1}..." class="flex-1 rounded-xl bg-oled border border-cardBorder px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 ${p.done ? 'line-through opacity-60' : ''}" />
+        `;
+        box.appendChild(row);
+      });
+      document.getElementById('dayNoteInput').value = dayInfo.note || '';
+    }
+
+    function renderSleepAndEnergy(dayInfo) {
+      document.getElementById('sleepHoursBadge').textContent = `${Number(dayInfo.sleepHours).toFixed(1)}u`;
+      document.getElementById('sleepRange').value = dayInfo.sleepHours;
+      document.getElementById('bedTimeInput').value = dayInfo.bedTime || '23:00';
+      document.getElementById('wakeTimeInput').value = dayInfo.wakeTime || '06:30';
+
+      const starsRow = document.getElementById('sleepStarsRow');
+      starsRow.innerHTML = '';
+      for (let s = 1; s <= 5; s++) {
+        const active = s <= dayInfo.sleepQuality;
+        starsRow.innerHTML += `
+          <button onclick="setSleepQuality(${s})" class="py-2 rounded-xl border text-sm font-bold ${
+            active ? 'bg-amber-500/20 border-amber-400 text-amber-300' : 'bg-oled border-cardBorder text-slate-500'
+          }">${s} ★</button>
+        `;
+      }
+
+      const energyRow = document.getElementById('energyRow');
+      energyRow.innerHTML = '';
+      for (let e = 1; e <= 5; e++) {
+        const active = e === dayInfo.energy;
+        energyRow.innerHTML += `
+          <button onclick="setEnergy(${e})" class="py-2 rounded-xl border text-xs font-bold ${
+            active ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300' : 'bg-oled border-cardBorder text-slate-400'
+          }">⚡ ${e}/5</button>
+        `;
+      }
+
+      const moodRow = document.getElementById('moodRow');
+      moodRow.innerHTML = '';
+      MOODS.forEach((m, idx) => {
+        const score = idx + 1;
+        const active = score === dayInfo.mood;
+        moodRow.innerHTML += `
+          <button onclick="setMood(${score})" class="py-2 rounded-xl border text-lg ${
+            active ? 'bg-indigo-500/25 border-indigo-400' : 'bg-oled border-cardBorder opacity-60'
+          }">${m}</button>
+        `;
+      });
+
+      document.getElementById('waterCounterText').textContent = `${dayInfo.water} / 8`;
+      const waterPct = Math.min(100, Math.round((dayInfo.water / 8) * 100));
+      document.getElementById('waterProgressBar').style.width = `${waterPct}%`;
+      document.getElementById('coffeeCounterText').textContent = `${dayInfo.coffee} koppen`;
+      document.getElementById('noLateCoffeeCheck').checked = !!dayInfo.noLateCoffee;
+    }
+
+    function renderInsights(weekDates) {
+      const habitBars = document.getElementById('weeklyHabitBars');
+      const sleepBars = document.getElementById('weeklySleepBars');
+      habitBars.innerHTML = '';
+      sleepBars.innerHTML = '';
+
+      weekDates.forEach((d, idx) => {
+        const k = formatDateKey(d);
+        const dayLog = state.logs[k] || {};
+        const done = state.habits.filter(h => dayLog[h.id]).length;
+        const pct = state.habits.length ? Math.round((done / state.habits.length) * 100) : 0;
+
+        habitBars.innerHTML += `
+          <div class="flex flex-col items-center h-full justify-end">
+            <span class="text-[10px] text-slate-400 mb-1">${pct}%</span>
+            <div class="w-full bg-oled rounded-t-lg overflow-hidden flex items-end h-24">
+              <div class="w-full bg-indigo-500 rounded-t-lg transition-all" style="height:${Math.max(6, pct)}%"></div>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-300 mt-1.5">${DAY_LABELS[idx]}</span>
+          </div>
+        `;
+
+        const info = getDayObj(k);
+        const sleepH = Number(info.sleepHours || 0);
+        const sleepPct = Math.min(100, Math.round((sleepH / 10) * 100));
+        sleepBars.innerHTML += `
+          <div class="flex flex-col items-center h-full justify-end">
+            <span class="text-[10px] text-indigo-300 mb-0.5">${sleepH.toFixed(1)}u</span>
+            <span class="text-[9px] text-emerald-400 mb-1">⚡${info.energy}</span>
+            <div class="w-full bg-oled rounded-t-lg overflow-hidden flex items-end h-20">
+              <div class="w-full bg-indigo-400 rounded-t-lg transition-all" style="height:${Math.max(6, sleepPct)}%"></div>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-300 mt-1.5">${DAY_LABELS[idx]}</span>
+          </div>
+        `;
+      });
+
+      const rankList = document.getElementById('streakRankingList');
+      rankList.innerHTML = '';
+      state.habits.forEach(h => {
+        const s = getStreak(h.id);
+        rankList.innerHTML += `
+          <div class="flex items-center justify-between bg-oled border border-cardBorder rounded-xl px-3 py-2.5">
+            <div class="flex items-center gap-2.5">
+              <span>${h.icon}</span>
+              <span class="text-xs font-semibold text-white">${h.name}</span>
+            </div>
+            <span class="text-xs font-bold text-amber-400">${s} dagen 🔥</span>
+          </div>
+        `;
+      });
+    }
+
+    function toggleHabit(habitId, dateKey) {
+      if (!state.logs[dateKey]) state.logs[dateKey] = {};
+      state.logs[dateKey][habitId] = !state.logs[dateKey][habitId];
+      saveState();
+      renderAll();
+    }
+
+    function setRoutineFilter(filter) {
+      state.routineFilter = filter;
+      ['all', 'Ochtend', 'Overdag', 'Avond'].forEach(f => {
+        const el = document.getElementById('filter-' + f);
+        if (f === filter) {
+          el.className = 'px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white';
+        } else {
+          el.className = 'px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-card border border-cardBorder text-slate-300';
+        }
+      });
+      renderAll();
+    }
+
+    function togglePriority(idx) {
+      const info = getDayObj(state.selectedDate);
+      info.priorities[idx].done = !info.priorities[idx].done;
+      saveState();
+      renderAll();
+    }
+
+    function updatePriorityText(idx, val) {
+      const info = getDayObj(state.selectedDate);
+      info.priorities[idx].text = val;
+      saveState();
+    }
+
+    function saveDayNote(val) {
+      const info = getDayObj(state.selectedDate);
+      info.note = val;
+      saveState();
+    }
+
+    function setSleepHours(val) {
+      const info = getDayObj(state.selectedDate);
+      info.sleepHours = parseFloat(val);
+      saveState();
+      renderAll();
+    }
+
+    function adjustSleep(delta) {
+      const info = getDayObj(state.selectedDate);
+      info.sleepHours = Math.max(0, Math.min(12, Number(info.sleepHours) + delta));
+      saveState();
+      renderAll();
+    }
+
+    function saveSleepTimes() {
+      const info = getDayObj(state.selectedDate);
+      info.bedTime = document.getElementById('bedTimeInput').value;
+      info.wakeTime = document.getElementById('wakeTimeInput').value;
+      saveState();
+    }
+
+    function setSleepQuality(stars) {
+      const info = getDayObj(state.selectedDate);
+      info.sleepQuality = stars;
+      saveState();
+      renderAll();
+    }
+
+    function setEnergy(score) {
+      const info = getDayObj(state.selectedDate);
+      info.energy = score;
+      saveState();
+      renderAll();
+    }
+
+    function setMood(score) {
+      const info = getDayObj(state.selectedDate);
+      info.mood = score;
+      saveState();
+      renderAll();
+    }
+
+    function adjustCounter(field, delta) {
+      const info = getDayObj(state.selectedDate);
+      info[field] = Math.max(0, (info[field] || 0) + delta);
+      saveState();
+      renderAll();
+    }
+
+    function toggleNoLateCoffee(checked) {
+      const info = getDayObj(state.selectedDate);
+      info.noLateCoffee = checked;
+      saveState();
+    }
+
+    function shiftWeek(dir) {
+      state.weekOffset += dir;
+      const dates = getWeekDates();
+      state.selectedDate = formatDateKey(dates[0]);
+      renderAll();
+    }
+
+    function goToday() {
+      state.weekOffset = 0;
+      state.selectedDate = formatDateKey(new Date());
+      renderAll();
+    }
+
+    function switchTab(tab) {
+      ['today', 'sleep', 'insights', 'settings'].forEach(t => {
+        document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
+        const navBtn = document.getElementById('nav-' + t);
+        navBtn.className = t === tab
+          ? 'flex flex-col items-center py-1.5 text-indigo-400'
+          : 'flex flex-col items-center py-1.5 text-slate-400';
+      });
+    }
+
+    function openHabitModal() {
+      const m = document.getElementById('habitModal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closeHabitModal() {
+      const m = document.getElementById('habitModal');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    function saveNewHabit() {
+      const name = document.getElementById('newHabitName').value.trim();
+      const icon = document.getElementById('newHabitIcon').value.trim() || '✅';
+      const routine = document.getElementById('newHabitRoutine').value;
+      if (!name) return;
+      state.habits.push({ id: 'h_' + Date.now(), name, icon, routine });
+      document.getElementById('newHabitName').value = '';
+      saveState();
+      closeHabitModal();
+      renderAll();
+    }
+
+    function deleteHabit(id) {
+      state.habits = state.habits.filter(h => h.id !== id);
+      saveState();
+      renderAll();
+    }
+
+    function exportData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(localStorage.getItem(STORAGE_KEY) || '{}');
+      const a = document.createElement('a');
+      a.href = dataStr;
+      a.download = `leefstijl_backup_${formatDateKey(new Date())}.json`;
+      a.click();
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed.habits) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+            loadState();
+            renderAll();
+          }
+        } catch (err) {}
+      };
+      reader.readAsText(file);
+    }
+
+    loadState();
+    renderAll();
+  </script>
+</body>
+</html>
