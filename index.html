@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#070a12" />
+  <meta id="metaThemeColor" name="theme-color" content="#070a12" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Leefstijl" />
@@ -38,6 +38,7 @@
       padding-top: max(12px, var(--sat));
       padding-bottom: calc(88px + var(--sab));
       overflow-x: hidden;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
     .bottom-nav {
       padding-bottom: max(10px, var(--sab));
@@ -47,13 +48,51 @@
     }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* LICHTE MODUS OVERRIDES */
+    html.light body {
+      background-color: #f1f5f9;
+      color: #0f172a;
+    }
+    html.light .bg-oled {
+      background-color: #f8fafc !important;
+    }
+    html.light .bg-oled\/90, html.light .bg-oled\/95 {
+      background-color: rgba(255, 255, 255, 0.92) !important;
+    }
+    html.light .bg-card {
+      background-color: #ffffff !important;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+    html.light .border-cardBorder, html.light .border-cardBorder\/80, html.light .border-cardBorder\/60 {
+      border-color: #e2e8f0 !important;
+    }
+    html.light .text-white {
+      color: #0f172a !important;
+    }
+    html.light .text-slate-300, html.light .text-slate-200 {
+      color: #334155 !important;
+    }
+    html.light .text-slate-400, html.light .text-slate-500 {
+      color: #64748b !important;
+    }
+    html.light .bg-indigo-600.text-white,
+    html.light .bg-sky-600.text-white,
+    html.light .bg-amber-600.text-white,
+    html.light button.bg-indigo-600 {
+      color: #ffffff !important;
+    }
+    html.light .week-active-btn,
+    html.light .week-active-btn span {
+      color: #ffffff !important;
+    }
   </style>
 </head>
 <body class="min-h-screen select-none">
 
   <!-- TOP HEADER -->
   <header class="max-w-5xl mx-auto px-4 pt-2 pb-3 flex items-center justify-between border-b border-cardBorder/80 sticky top-0 z-30 bg-oled/90 backdrop-blur-md">
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2.5">
       <div class="w-10 h-10 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-xl shadow-inner">
         🌙
       </div>
@@ -63,21 +102,22 @@
       </div>
     </div>
 
-    <div class="flex items-center gap-1.5">
-      <button onclick="shiftWeek(-1)" class="w-9 h-9 rounded-xl bg-card border border-cardBorder flex items-center justify-center text-slate-300 active:scale-95">◀</button>
-      <button onclick="goToday()" class="px-2.5 h-9 rounded-xl bg-card border border-cardBorder text-xs font-medium text-indigo-400 active:scale-95">Vandaag</button>
-      <button onclick="shiftWeek(1)" class="w-9 h-9 rounded-xl bg-card border border-cardBorder flex items-center justify-center text-slate-300 active:scale-95">▶</button>
-      <button onclick="openHabitModal()" class="ml-1 px-3 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow-lg shadow-indigo-600/30 active:scale-95">+ Doel</button>
+    <div class="flex items-center gap-1">
+      <button onclick="toggleTheme()" id="themeToggleBtn" title="Wissel licht/donker" class="w-9 h-9 rounded-xl bg-card border border-cardBorder flex items-center justify-center text-sm active:scale-95">☀️</button>
+      <button onclick="shiftWeek(-1)" class="w-8 h-9 rounded-xl bg-card border border-cardBorder flex items-center justify-center text-slate-300 text-xs active:scale-95">◀</button>
+      <button onclick="goToday()" class="px-2 h-9 rounded-xl bg-card border border-cardBorder text-xs font-medium text-indigo-500 active:scale-95">Nu</button>
+      <button onclick="shiftWeek(1)" class="w-8 h-9 rounded-xl bg-card border border-cardBorder flex items-center justify-center text-slate-300 text-xs active:scale-95">▶</button>
+      <button onclick="openHabitModal()" class="ml-0.5 px-2.5 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow-lg shadow-indigo-600/30 active:scale-95">+ Doel</button>
     </div>
   </header>
 
   <main class="max-w-5xl mx-auto px-4 pt-4 space-y-5">
 
-    <!-- 7-DAAGSE DAG SELECTOR (Pixel 10 Pro Breedte Geoptimaliseerd) -->
+    <!-- 7-DAAGSE DAG SELECTOR -->
     <section>
       <div class="flex items-center justify-between mb-2">
         <span id="weekRangeText" class="text-xs font-medium text-slate-400 uppercase tracking-wider">Weekoverzicht</span>
-        <span id="dayCompletionPill" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">0% voltooid</span>
+        <span id="dayCompletionPill" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">0% voltooid</span>
       </div>
       <div id="weekSelectorGrid" class="grid grid-cols-7 gap-1.5"></div>
     </section>
@@ -90,21 +130,20 @@
       </div>
       <div class="bg-card border border-cardBorder rounded-2xl p-2.5 text-center">
         <div class="text-[11px] text-slate-400">Slaap</div>
-        <div id="kpiSleep" class="text-base font-bold text-indigo-400 mt-0.5">0.0u</div>
+        <div id="kpiSleep" class="text-base font-bold text-indigo-500 mt-0.5">0.0u</div>
       </div>
       <div class="bg-card border border-cardBorder rounded-2xl p-2.5 text-center">
         <div class="text-[11px] text-slate-400">Water</div>
-        <div id="kpiWater" class="text-base font-bold text-sky-400 mt-0.5">0/8</div>
+        <div id="kpiWater" class="text-base font-bold text-sky-500 mt-0.5">0/8</div>
       </div>
       <div class="bg-card border border-cardBorder rounded-2xl p-2.5 text-center">
         <div class="text-[11px] text-slate-400">Top Streak</div>
-        <div id="kpiStreak" class="text-base font-bold text-amber-400 mt-0.5">0d 🔥</div>
+        <div id="kpiStreak" class="text-base font-bold text-amber-500 mt-0.5">0d 🔥</div>
       </div>
     </section>
 
-    <!-- TAB 1: VANDAAG (GEWOONTEN & TOP 3 FOCUS) -->
+    <!-- TAB 1: VANDAAG -->
     <div id="tab-today" class="space-y-5">
-      <!-- Dagdeel Filter -->
       <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
         <button onclick="setRoutineFilter('all')" id="filter-all" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white">Alles</button>
         <button onclick="setRoutineFilter('Ochtend')" id="filter-Ochtend" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-card border border-cardBorder text-slate-300">☀️ Ochtend</button>
@@ -112,10 +151,8 @@
         <button onclick="setRoutineFilter('Avond')" id="filter-Avond" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-card border border-cardBorder text-slate-300">🌙 Avond</button>
       </div>
 
-      <!-- Gewoonte Kaarten Lijst -->
       <div id="habitsContainer" class="space-y-2.5"></div>
 
-      <!-- Top 3 Dagfocus & Reflectie -->
       <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-3">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-bold text-white flex items-center gap-2">🎯 Top 3 Focus voor deze dag</h2>
@@ -124,14 +161,13 @@
         <div id="prioritiesContainer" class="space-y-2"></div>
         <div class="pt-2">
           <label class="text-xs font-medium text-slate-400 block mb-1">📝 Korte dagreflectie / notitie</label>
-          <textarea id="dayNoteInput" rows="2" oninput="saveDayNote(this.value)" placeholder="Waarom ging het vandaag goed of minder? Bijv. laat op, goede energie..." class="w-full rounded-xl bg-oled border border-cardBorder px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"></textarea>
+          <textarea id="dayNoteInput" rows="2" oninput="saveDayNote(this.value)" placeholder="Waarom ging het vandaag goed of minder? Bijv. laat op, goede energie..." class="w-full rounded-xl bg-oled border border-cardBorder px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"></textarea>
         </div>
       </div>
     </div>
 
     <!-- TAB 2: SLAAP, ENERGIE, WATER & KOFFIE -->
     <div id="tab-sleep" class="space-y-4 hidden">
-      <!-- Slaap & Herstel -->
       <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-4">
         <div class="flex items-center justify-between">
           <div>
@@ -139,7 +175,7 @@
             <p class="text-xs text-slate-400">Log je uren en hoe uitgerust je wakker werd</p>
           </div>
           <div class="text-right">
-            <span id="sleepHoursBadge" class="text-xl font-extrabold text-indigo-400">7.5u</span>
+            <span id="sleepHoursBadge" class="text-xl font-extrabold text-indigo-500">7.5u</span>
             <span class="block text-[10px] text-slate-400">Doel: 8.0u</span>
           </div>
         </div>
@@ -167,7 +203,6 @@
         </div>
       </div>
 
-      <!-- Energie & Stemming -->
       <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-4">
         <div>
           <h2 class="text-sm font-bold text-white mb-2">🔋 Energie-batterij</h2>
@@ -179,14 +214,13 @@
         </div>
       </div>
 
-      <!-- Water & Cafeïne Tellers -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-bold text-white">💧 Hydratatie (Glazen)</h3>
-            <span id="waterCounterText" class="text-sm font-bold text-sky-400">0 / 8</span>
+            <span id="waterCounterText" class="text-sm font-bold text-sky-500">0 / 8</span>
           </div>
-          <div class="w-full h-2.5 bg-oled rounded-full overflow-hidden">
+          <div class="w-full h-2.5 bg-oled rounded-full overflow-hidden border border-cardBorder/60">
             <div id="waterProgressBar" class="h-full bg-sky-500 transition-all duration-300" style="width: 0%"></div>
           </div>
           <div class="flex gap-2">
@@ -198,7 +232,7 @@
         <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-bold text-white">☕ Cafeïne / Koffie</h3>
-            <span id="coffeeCounterText" class="text-sm font-bold text-amber-400">0 koppen</span>
+            <span id="coffeeCounterText" class="text-sm font-bold text-amber-500">0 koppen</span>
           </div>
           <div class="flex gap-2">
             <button onclick="adjustCounter('coffee', -1)" class="flex-1 py-2.5 rounded-xl bg-oled border border-cardBorder font-bold text-slate-300 active:scale-95">- 1 kop</button>
@@ -212,44 +246,48 @@
       </div>
     </div>
 
-    <!-- TAB 3: INZICHTEN & STREAK DIAGRAMMEN -->
+    <!-- TAB 3: INZICHTEN -->
     <div id="tab-insights" class="space-y-4 hidden">
-      <!-- Wekelijks Activiteitendiagram -->
       <div class="bg-card border border-cardBorder rounded-2xl p-4">
         <h2 class="text-sm font-bold text-white mb-1">📊 Wekelijkse Gewoonte-voortgang</h2>
         <p class="text-xs text-slate-400 mb-4">Percentage afgevinkte doelen per dag</p>
         <div id="weeklyHabitBars" class="grid grid-cols-7 gap-2 items-end h-36 pt-4 px-1"></div>
       </div>
 
-      <!-- Wekelijks Slaap & Energie Diagram -->
       <div class="bg-card border border-cardBorder rounded-2xl p-4">
         <h2 class="text-sm font-bold text-white mb-1">🌙 Wekelijks Slaap & Energie Diagram</h2>
         <p class="text-xs text-slate-400 mb-4">Slaapuren (balk) t.o.v. je energie-score (⚡)</p>
         <div id="weeklySleepBars" class="grid grid-cols-7 gap-2 items-end h-36 pt-4 px-1"></div>
       </div>
 
-      <!-- Streak Ranglijst -->
       <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-3">
         <h2 class="text-sm font-bold text-white">🔥 Actieve Streaks per Gewoonte</h2>
         <div id="streakRankingList" class="space-y-2.5"></div>
       </div>
     </div>
 
-    <!-- TAB 4: APP & BACK-UP DATA -->
+    <!-- TAB 4: INSTELLINGEN & DATA -->
     <div id="tab-settings" class="space-y-4 hidden">
+      <div class="bg-card border border-cardBorder rounded-2xl p-4 flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-bold text-white">🎨 Weergave Thema</h2>
+          <p class="text-xs text-slate-400">Wissel tussen OLED Donker en Licht</p>
+        </div>
+        <button onclick="toggleTheme()" class="px-4 py-2 rounded-xl bg-indigo-600 text-xs font-semibold text-white active:scale-95">Wissel Thema</button>
+      </div>
+
       <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-3">
         <h2 class="text-sm font-bold text-white">📱 Installeren op je Google Pixel 10 Pro</h2>
         <ol class="text-xs text-slate-300 space-y-2 list-decimal list-inside">
-          <li>Open je live <code class="text-indigo-400">github.io</code> link in <strong>Chrome</strong> op je Pixel.</li>
+          <li>Open je live <code class="text-indigo-500">github.io</code> link in <strong>Chrome</strong> op je Pixel.</li>
           <li>Tik rechtsboven op de <strong>drie puntjes (⋮)</strong>.</li>
           <li>Kies <strong>Toevoegen aan startscherm</strong> -> <strong>App installeren</strong>.</li>
-          <li>Open de app vanaf je startscherm: hij draait nu op volledig scherm (zonder adresbalk) en slaat alles lokaal op je toestel op.</li>
         </ol>
       </div>
 
       <div class="bg-card border border-cardBorder rounded-2xl p-4 space-y-3">
         <h2 class="text-sm font-bold text-white">💾 Back-up maken & Herstellen</h2>
-        <p class="text-xs text-slate-400">Download je gegevens als JSON-bestand om ze veilig te bewaren of over te zetten naar een ander apparaat.</p>
+        <p class="text-xs text-slate-400">Download je gegevens als JSON-bestand om ze veilig te bewaren.</p>
         <div class="flex flex-wrap gap-2 pt-1">
           <button onclick="exportData()" class="px-4 py-2.5 rounded-xl bg-indigo-600 text-xs font-semibold text-white active:scale-95">⬇️ Exporteer Back-up (.json)</button>
           <label class="px-4 py-2.5 rounded-xl bg-oled border border-cardBorder text-xs font-semibold text-slate-200 cursor-pointer active:scale-95">
@@ -262,7 +300,7 @@
 
   </main>
 
-  <!-- MODAL: NIEUWE GEWOONTE TOEVOEGEN -->
+  <!-- MODAL: NIEUWE GEWOONTE -->
   <div id="habitModal" class="fixed inset-0 bg-black/75 z-50 hidden items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-card border-t sm:border border-cardBorder w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
       <div class="flex items-center justify-between">
@@ -296,10 +334,10 @@
     </div>
   </div>
 
-  <!-- ONDERSTE NAVIGATIEBALK (4 TABS VOOR PIXEL 10 PRO) -->
+  <!-- ONDERSTE NAVIGATIEBALK -->
   <nav class="bottom-nav fixed bottom-0 inset-x-0 bg-oled/95 backdrop-blur-lg border-t border-cardBorder z-40">
     <div class="max-w-md mx-auto grid grid-cols-4 px-2 pt-1.5">
-      <button onclick="switchTab('today')" id="nav-today" class="flex flex-col items-center py-1.5 text-indigo-400">
+      <button onclick="switchTab('today')" id="nav-today" class="flex flex-col items-center py-1.5 text-indigo-500">
         <span class="text-lg">☑️</span>
         <span class="text-[11px] font-semibold mt-0.5">Vandaag</span>
       </button>
@@ -319,7 +357,6 @@
   </nav>
 
   <script>
-    // DYNAMISCH PWA MANIFEST GENEREREN
     (function setupPWA() {
       const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="120" fill="#111624"/><circle cx="256" cy="256" r="170" fill="#6366f1" opacity="0.2"/><path d="M215 275l-45-45-25 25 70 70 155-155-25-25z" fill="#818cf8"/></svg>`;
       const iconUrl = "data:image/svg+xml;base64," + btoa(svgIcon);
@@ -360,6 +397,7 @@
     }
 
     let state = {
+      theme: 'dark',
       selectedDate: formatDateKey(new Date()),
       weekOffset: 0,
       routineFilter: 'all',
@@ -375,6 +413,29 @@
       dailyData: {}
     };
 
+    function applyTheme() {
+      const htmlEl = document.documentElement;
+      const btn = document.getElementById('themeToggleBtn');
+      const metaTheme = document.getElementById('metaThemeColor');
+      if (state.theme === 'light') {
+        htmlEl.classList.remove('dark');
+        htmlEl.classList.add('light');
+        if (btn) btn.textContent = '🌙';
+        if (metaTheme) metaTheme.setAttribute('content', '#f1f5f9');
+      } else {
+        htmlEl.classList.remove('light');
+        htmlEl.classList.add('dark');
+        if (btn) btn.textContent = '☀️';
+        if (metaTheme) metaTheme.setAttribute('content', '#070a12');
+      }
+    }
+
+    function toggleTheme() {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      applyTheme();
+      saveState();
+    }
+
     function loadState() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
@@ -383,10 +444,12 @@
           state = { ...state, ...parsed, selectedDate: formatDateKey(new Date()), weekOffset: 0 };
         }
       } catch (e) {}
+      applyTheme();
     }
 
     function saveState() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        theme: state.theme,
         habits: state.habits,
         logs: state.logs,
         dailyData: state.dailyData
@@ -467,7 +530,7 @@
         btn.onclick = () => { state.selectedDate = key; renderAll(); };
         btn.className = `flex flex-col items-center py-2 rounded-2xl border transition-all ${
           isSelected
-            ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/30'
+            ? 'week-active-btn bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/30'
             : 'bg-card border-cardBorder text-slate-300'
         }`;
         btn.innerHTML = `
@@ -519,7 +582,7 @@
           miniDaysHtml += `
             <button onclick="toggleHabit('${habit.id}', '${k}')" class="h-8 rounded-xl text-[11px] font-bold border transition-all ${
               checked
-                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-500'
                 : 'bg-oled border-cardBorder text-slate-500'
             }">${DAY_LABELS[i][0]}</button>
           `;
@@ -537,11 +600,11 @@
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
                 <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-oled border border-cardBorder text-slate-400">${habit.routine}</span>
-                <span class="text-[11px] font-semibold text-amber-400">🔥 ${streak}d</span>
+                <span class="text-[11px] font-semibold text-amber-500">🔥 ${streak}d</span>
               </div>
               <h3 class="text-sm font-bold text-white truncate mt-0.5 ${isDoneToday ? 'line-through opacity-60' : ''}">${habit.name}</h3>
             </div>
-            <button onclick="deleteHabit('${habit.id}')" class="text-slate-500 hover:text-rose-400 text-xs px-2 py-1">🗑️</button>
+            <button onclick="deleteHabit('${habit.id}')" class="text-slate-400 hover:text-rose-500 text-xs px-2 py-1">🗑️</button>
           </div>
           <div class="grid grid-cols-7 gap-1.5 pt-1 border-t border-cardBorder/60">
             ${miniDaysHtml}
@@ -561,7 +624,7 @@
           <button onclick="togglePriority(${idx})" class="w-8 h-8 rounded-xl border flex items-center justify-center text-xs font-bold shrink-0 ${
             p.done ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-oled border-cardBorder text-slate-400'
           }">${p.done ? '✓' : idx + 1}</button>
-          <input type="text" value="${p.text.replace(/"/g, '&quot;')}" oninput="updatePriorityText(${idx}, this.value)" placeholder="Belangrijke taak #${idx + 1}..." class="flex-1 rounded-xl bg-oled border border-cardBorder px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 ${p.done ? 'line-through opacity-60' : ''}" />
+          <input type="text" value="${p.text.replace(/"/g, '&quot;')}" oninput="updatePriorityText(${idx}, this.value)" placeholder="Belangrijke taak #${idx + 1}..." class="flex-1 rounded-xl bg-oled border border-cardBorder px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 ${p.done ? 'line-through opacity-60' : ''}" />
         `;
         box.appendChild(row);
       });
@@ -580,7 +643,7 @@
         const active = s <= dayInfo.sleepQuality;
         starsRow.innerHTML += `
           <button onclick="setSleepQuality(${s})" class="py-2 rounded-xl border text-sm font-bold ${
-            active ? 'bg-amber-500/20 border-amber-400 text-amber-300' : 'bg-oled border-cardBorder text-slate-500'
+            active ? 'bg-amber-500/20 border-amber-400 text-amber-500' : 'bg-oled border-cardBorder text-slate-400'
           }">${s} ★</button>
         `;
       }
@@ -591,7 +654,7 @@
         const active = e === dayInfo.energy;
         energyRow.innerHTML += `
           <button onclick="setEnergy(${e})" class="py-2 rounded-xl border text-xs font-bold ${
-            active ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300' : 'bg-oled border-cardBorder text-slate-400'
+            active ? 'bg-emerald-500/20 border-emerald-400 text-emerald-500' : 'bg-oled border-cardBorder text-slate-400'
           }">⚡ ${e}/5</button>
         `;
       }
@@ -630,7 +693,7 @@
         habitBars.innerHTML += `
           <div class="flex flex-col items-center h-full justify-end">
             <span class="text-[10px] text-slate-400 mb-1">${pct}%</span>
-            <div class="w-full bg-oled rounded-t-lg overflow-hidden flex items-end h-24">
+            <div class="w-full bg-oled rounded-t-lg overflow-hidden flex items-end h-24 border border-cardBorder/50">
               <div class="w-full bg-indigo-500 rounded-t-lg transition-all" style="height:${Math.max(6, pct)}%"></div>
             </div>
             <span class="text-[11px] font-semibold text-slate-300 mt-1.5">${DAY_LABELS[idx]}</span>
@@ -642,9 +705,9 @@
         const sleepPct = Math.min(100, Math.round((sleepH / 10) * 100));
         sleepBars.innerHTML += `
           <div class="flex flex-col items-center h-full justify-end">
-            <span class="text-[10px] text-indigo-300 mb-0.5">${sleepH.toFixed(1)}u</span>
-            <span class="text-[9px] text-emerald-400 mb-1">⚡${info.energy}</span>
-            <div class="w-full bg-oled rounded-t-lg overflow-hidden flex items-end h-20">
+            <span class="text-[10px] text-indigo-500 font-semibold mb-0.5">${sleepH.toFixed(1)}u</span>
+            <span class="text-[9px] text-emerald-500 font-semibold mb-1">⚡${info.energy}</span>
+            <div class="w-full bg-oled rounded-t-lg overflow-hidden flex items-end h-20 border border-cardBorder/50">
               <div class="w-full bg-indigo-400 rounded-t-lg transition-all" style="height:${Math.max(6, sleepPct)}%"></div>
             </div>
             <span class="text-[11px] font-semibold text-slate-300 mt-1.5">${DAY_LABELS[idx]}</span>
@@ -662,7 +725,7 @@
               <span>${h.icon}</span>
               <span class="text-xs font-semibold text-white">${h.name}</span>
             </div>
-            <span class="text-xs font-bold text-amber-400">${s} dagen 🔥</span>
+            <span class="text-xs font-bold text-amber-500">${s} dagen 🔥</span>
           </div>
         `;
       });
@@ -780,7 +843,7 @@
         document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
         const navBtn = document.getElementById('nav-' + t);
         navBtn.className = t === tab
-          ? 'flex flex-col items-center py-1.5 text-indigo-400'
+          ? 'flex flex-col items-center py-1.5 text-indigo-500'
           : 'flex flex-col items-center py-1.5 text-slate-400';
       });
     }
